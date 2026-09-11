@@ -21,13 +21,3 @@
 .pdf-manual-highlight{background:transparent!important;color:inherit;text-decoration-line:underline;text-decoration-color:#eb6f9c;text-decoration-thickness:3px;text-underline-offset:3px;text-decoration-skip-ink:none}
 .underline-button{width:100%;margin-top:10px;border:1px dashed #ed8bae;background:#fff6fa;color:#a94670;border-radius:12px;padding:9px 12px;font:inherit;font-weight:800;cursor:pointer}.underline-button:disabled{border-style:solid;color:#8d6978;background:#fffafd;cursor:default}
 
-/* 荧光笔模式：扫过即划线（PDF 文字层） */
-.paper.pen-mode{cursor:crosshair}
-.paper.pen-mode .react-pdf__Page__textContent{user-select:none;-webkit-user-select:none}
-.paper.pen-mode .react-pdf__Page{touch-action:pan-y}
-.pdf-pen-mark{background:#ffe58a;border-radius:3px;box-shadow:0 1px 0 #f2c94c}
-.pen-results{margin-top:20px;border-top:1px dashed #f0b9cc;padding-top:14px}
-.pen-results .side-title{font-size:16px}
-.pen-results .vocab-list li{cursor:pointer}
-.pen-results .vocab-list li:hover b{color:#d83b66}
-.pen-toggle{display:inline-flex;align-items:center;gap:5px}

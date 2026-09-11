@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { renderAsync } from 'docx-preview'
-import { BookOpen, FileUp, Highlighter, Languages, LoaderCircle, Plus, Sparkles, Volume2 } from 'lucide-react'
+import { BookOpen, FileUp, Languages, LoaderCircle, Plus, Sparkles, Volume2 } from 'lucide-react'
 import { lookupWord, normalizeLookupWord, type DictionaryEntry } from './lib/dictionary'
 import { lookupRemoteWord } from './lib/remoteDict'
 import { analyzeSentenceLocally } from './lib/localGrammar'
@@ -36,11 +36,7 @@ function App() {
   const [grammar, setGrammar] = useState<GrammarResult | null>(null)
   const [isAnalysingGrammar, setIsAnalysingGrammar] = useState(false)
   const [cards, setCards] = useState<VocabularyCard[]>([])
-  const [notice, setNotice] = useState('点一下英文词即可查词；PDF 里可开荧光笔扫词；拖选一句英文可分析句法。')
-  const [penActive, setPenActive] = useState(false)
-  const [penResults, setPenResults] = useState<Array<{ lemma: string; translation: string }>>([])
-  const penDrawing = useRef(false)
-  const penWords = useRef<Set<string>>(new Set())
+  const [notice, setNotice] = useState('点一下英文词即可查词；拖选一句英文可分析句法。')
   const docxRef = useRef<HTMLDivElement>(null)
   const readerRef = useRef<HTMLElement>(null)
   const lookupRequest = useRef(0)
@@ -91,7 +87,6 @@ function App() {
   }
 
   const inspectCurrentSelection = () => {
-    if (penActive) return
     const selected = window.getSelection()
     if (!selected || selected.isCollapsed || !selected.rangeCount || !readerRef.current) return
     const node = selected.getRangeAt(0).commonAncestorContainer
@@ -123,7 +118,6 @@ function App() {
   // 点一下单词也能查：桌面/触屏的单击（tap）都走这里。
   // 用 caretRangeFromPoint 找到指尖/光标落在哪个英文词上。
   const lookupTappedWord = (event: React.MouseEvent<HTMLElement>) => {
-    if (penActive) return
     const target = event.target as Element
     if (target.closest('button, a, input, label')) return
     const selected = window.getSelection()
@@ -150,56 +144,6 @@ function App() {
     setNotice(`已给 “${word}” 划线；这是你的手动标记。`)
   }
   const renderPdfText = ({ str }: { str: string }) => renderMarkedPdfText(str, underlinedWords)
-
-  // ── 荧光笔：手指/鼠标扫过 PDF 文字，扫到的英文词自动划线并批量查词 ──
-  const collectPenPoint = (x: number, y: number) => {
-    const el = document.elementFromPoint(x, y)
-    const span = el?.closest('.react-pdf__Page__textContent span')
-    if (!span || !span.textContent) return
-    const tokens = span.textContent.toLowerCase().match(/[a-z]+(?:-[a-z]+)*/g) ?? []
-    let added = false
-    for (const token of tokens) {
-      const normalized = normalizeLookupWord(token)
-      if (normalized && !penWords.current.has(normalized)) { penWords.current.add(normalized); added = true }
-    }
-    if (added) span.classList.add('pdf-pen-mark')
-  }
-  const onPenDown = (event: React.PointerEvent<HTMLElement>) => {
-    if (!penActive || mode !== 'pdf') return
-    penDrawing.current = true
-    penWords.current = new Set()
-    event.preventDefault()
-    collectPenPoint(event.clientX, event.clientY)
-  }
-  const onPenMove = (event: React.PointerEvent<HTMLElement>) => {
-    if (!penDrawing.current) return
-    collectPenPoint(event.clientX, event.clientY)
-  }
-  const finishPenStroke = async () => {
-    const words = [...penWords.current]
-    penWords.current = new Set()
-    if (!words.length) return
-    setUnderlinedWords((previous) => [...previous, ...words.filter((word) => !previous.includes(word))])
-    setNotice(`荧光笔划出 ${words.length} 个词，正在本机查词…`)
-    const results: Array<{ lemma: string; translation: string }> = []
-    for (const word of words.slice(0, 15)) {
-      const remote = await lookupRemoteWord(word)
-      const seed = remote ? null : lookupWord(word)
-      results.push({ lemma: remote?.lemma ?? seed?.lemma ?? word, translation: (remote?.translation ?? seed?.translation ?? '本机词典暂未收录').split('\n')[0] })
-    }
-    setPenResults(results)
-    setNotice(`荧光笔已划出 ${words.length} 个词并保存划线，右侧可查看释义。`)
-  }
-  const onPenUp = () => {
-    if (!penDrawing.current) return
-    penDrawing.current = false
-    void finishPenStroke()
-  }
-  const togglePen = () => {
-    const next = !penActive
-    setPenActive(next)
-    setNotice(next ? '荧光笔已打开：手指或鼠标扫过 PDF 里的单词，扫到的词会自动划线并出释义。' : '荧光笔已关闭。')
-  }
 
   const handleFile = (file?: File) => {
     if (!file) return
@@ -254,6 +198,6 @@ function App() {
   const saveCard = () => { if (entry) { setCards(saveVocabulary(entry, sentence)); setNotice(`已把 ${entry.lemma} 保存到本机生词本。`) } }
   const documentPanel = <section className="library-panel"><div className="side-title"><BookOpen size={18}/> 我的文档</div><div className="document active"><span className="doc-icon">{mode === 'docx' ? 'DOCX' : 'PDF'}</span><span><b>{fileName}</b><small>{mode === 'sample' ? '上传文档后即可原文划词' : '仅在本机读取，不上传云端'}</small></span></div><div className="side-title vocab-title"><Languages size={18}/> 生词本 <span>{cards.length}</span></div>{cards.length ? <ul className="vocab-list">{cards.slice(0, 5).map((card) => <li key={card.id}><b>{card.lemma}</b><small>{card.translation}</small></li>)}</ul> : <p className="empty">加入的单词会保存在这台浏览器里。</p>}</section>
 
-  return <main className="app-shell"><header className="topbar"><div className="ella-brand"><span className="ella-bow" aria-hidden="true"><i/></span><span className="ella-wordmark"><strong>Ella 的学习小屋</strong><small>READ · MARK · GROW</small></span></div><div className="status-dot">离线词典已启用</div></header><section className="hero"><div><p className="eyebrow">英文论文沉浸式阅读</p><h1>读论文时，<em>划词就懂。</em></h1><p>查词、发音、句法分析全部在这台设备上完成，不联网也不花钱。</p></div><label className="upload"><FileUp size={18}/><span>上传 PDF / DOCX</span><input aria-label="上传 PDF 或 DOCX" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])}/></label></section><div className="notice" role="status">{notice}</div><section className="workspace"><section className="reader"><div className="reader-top"><span>阅读区</span><small>点词即查 · 拖选句子可分析句法 · PDF 里可开荧光笔扫词划线</small>{mode === 'pdf' && <button className={penActive ? 'pen-toggle active' : 'pen-toggle'} onClick={togglePen}><Highlighter size={14}/>{penActive ? '荧光笔·开' : '荧光笔'}</button>}</div><article ref={readerRef} className={penActive && mode === 'pdf' ? 'paper pen-mode' : 'paper'} onMouseUp={inspectSelection} onClick={lookupTappedWord} onPointerDown={onPenDown} onPointerMove={onPenMove} onPointerUp={onPenUp} onPointerCancel={onPenUp}>{mode === 'sample' && <><p className="paper-meta">DEMO PAPER · PAGE 1</p><h2>Context-aware vocabulary learning in academic reading</h2><p>{sampleSentence}</p></>}{mode === 'pdf' && pdfFile && <Document file={pdfFile} loading={<p><LoaderCircle className="spin"/> 正在解析 PDF…</p>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setNotice('PDF 解析失败：请确认文件有可选中的文字层。')}><Page key={`${currentPage}-${underlinedWords.join('-')}`} pageNumber={currentPage} width={720} renderAnnotationLayer renderTextLayer customTextRenderer={renderPdfText}/><p className="page-count">已加载 {pages} 页，当前第 {currentPage} 页。<button disabled={currentPage <= 1} onClick={() => { const next = currentPage - 1; setCurrentPage(next); setPdfStudyText(pdfPageTexts[next - 1] || '') }}>上一页</button><button disabled={currentPage >= pages} onClick={() => { const next = currentPage + 1; setCurrentPage(next); setPdfStudyText(pdfPageTexts[next - 1] || '') }}>下一页</button></p></Document>}{mode === 'docx' && <div ref={docxRef} className="docx-content"/>}</article></section><aside className="utility-rail"><section className="lookup"><div className="lookup-title">查词卡</div>{selectedSentence ? <div className="sentence-card"><span>已选英文句子</span><p>{selectedSentence}</p>{grammar ? <div className="ai-box"><b>整句意思</b><p>{grammar.translation}</p><b>句法结构</b><p>{grammar.structure}</p><b>主句</b><p>{grammar.main_clause}</p><b>从句 / 修饰成分</b><ul>{grammar.clauses.map((item, index) => <li key={`${item.text}-${index}`}><strong>{item.type}</strong> — {item.text} ({item.role})</li>)}</ul><b>中文解释</b><p>{grammar.explanation}</p></div> : <button className="ai-button" disabled={isAnalysingGrammar} onClick={analyzeGrammar}><Sparkles size={16}/>{isAnalysingGrammar ? '本机正在分析…' : '分析句法（本机免费）'}</button>}</div> : <>{entry && <><div className="word-head"><h2>{selectedWord}</h2><span>{entry.partOfSpeech}</span></div><p className="lemma">Lemma: {entry.lemma}</p><div className="pronunciation"><button onClick={() => speak('en-GB')}><Volume2 size={17}/> UK / {entry.ipaUk}</button><button onClick={() => speak('en-US')}><Volume2 size={17}/> US / {entry.ipaUs}</button></div><div className="definition"><span>本机离线词典</span><strong>{entry.translation}</strong><p>{entry.english}</p></div><button className="underline-button" disabled={underlinedWords.includes(entry.lemma.toLowerCase())} onClick={addUnderline}>{underlinedWords.includes(entry.lemma.toLowerCase()) ? '已划线' : '给单词划线'}</button><button className="save-button" disabled={selectedSaved} onClick={saveCard}><Plus size={17}/>{selectedSaved ? 'Saved to vocabulary' : 'Add to vocabulary'}</button></>}{penResults.length > 0 && <div className="pen-results"><div className="side-title">荧光笔划出的词 <span>{penResults.length}</span></div><ul className="vocab-list">{penResults.map((item) => <li key={item.lemma} onClick={() => void openLookup(item.lemma, pdfStudyText || sampleSentence)}><b>{item.lemma}</b><small>{item.translation}</small></li>)}</ul><button className="underline-button" onClick={() => setPenResults([])}>清空本次划线结果</button></div>}{!entry && penResults.length === 0 && <div className="empty-card"><Languages size={28}/><p>点一下英文词即可查词；PDF 里打开荧光笔，扫过的单词会自动划线并出释义；拖选一句英文可分析句法。</p></div>}</>}</section>{documentPanel}</aside></section></main>
+  return <main className="app-shell"><header className="topbar"><div className="ella-brand"><span className="ella-bow" aria-hidden="true"><i/></span><span className="ella-wordmark"><strong>Ella 的学习小屋</strong><small>READ · MARK · GROW</small></span></div><div className="status-dot">离线词典已启用</div></header><section className="hero"><div><p className="eyebrow">英文论文沉浸式阅读</p><h1>读论文时，<em>划词就懂。</em></h1><p>查词、发音、句法分析全部在这台设备上完成，不联网也不花钱。</p></div><label className="upload"><FileUp size={18}/><span>上传 PDF / DOCX</span><input aria-label="上传 PDF 或 DOCX" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])}/></label></section><div className="notice" role="status">{notice}</div><section className="workspace"><section className="reader"><div className="reader-top"><span>阅读区</span><small>点词即查 · 拖选句子可分析句法 · 单词划线由你手动决定</small></div><article ref={readerRef} className="paper" onMouseUp={inspectSelection} onClick={lookupTappedWord}>{mode === 'sample' && <><p className="paper-meta">DEMO PAPER · PAGE 1</p><h2>Context-aware vocabulary learning in academic reading</h2><p>{sampleSentence}</p></>}{mode === 'pdf' && pdfFile && <Document file={pdfFile} loading={<p><LoaderCircle className="spin"/> 正在解析 PDF…</p>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setNotice('PDF 解析失败：请确认文件有可选中的文字层。')}><Page key={`${currentPage}-${underlinedWords.join('-')}`} pageNumber={currentPage} width={720} renderAnnotationLayer renderTextLayer customTextRenderer={renderPdfText}/><p className="page-count">已加载 {pages} 页，当前第 {currentPage} 页。<button disabled={currentPage <= 1} onClick={() => { const next = currentPage - 1; setCurrentPage(next); setPdfStudyText(pdfPageTexts[next - 1] || '') }}>上一页</button><button disabled={currentPage >= pages} onClick={() => { const next = currentPage + 1; setCurrentPage(next); setPdfStudyText(pdfPageTexts[next - 1] || '') }}>下一页</button></p></Document>}{mode === 'docx' && <div ref={docxRef} className="docx-content"/>}</article></section><aside className="utility-rail"><section className="lookup"><div className="lookup-title">查词卡</div>{selectedSentence ? <div className="sentence-card"><span>已选英文句子</span><p>{selectedSentence}</p>{grammar ? <div className="ai-box"><b>整句意思</b><p>{grammar.translation}</p><b>句法结构</b><p>{grammar.structure}</p><b>主句</b><p>{grammar.main_clause}</p><b>从句 / 修饰成分</b><ul>{grammar.clauses.map((item, index) => <li key={`${item.text}-${index}`}><strong>{item.type}</strong> — {item.text} ({item.role})</li>)}</ul><b>中文解释</b><p>{grammar.explanation}</p></div> : <button className="ai-button" disabled={isAnalysingGrammar} onClick={analyzeGrammar}><Sparkles size={16}/>{isAnalysingGrammar ? '本机正在分析…' : '分析句法（本机免费）'}</button>}</div> : entry ? <><div className="word-head"><h2>{selectedWord}</h2><span>{entry.partOfSpeech}</span></div><p className="lemma">Lemma: {entry.lemma}</p><div className="pronunciation"><button onClick={() => speak('en-GB')}><Volume2 size={17}/> UK / {entry.ipaUk}</button><button onClick={() => speak('en-US')}><Volume2 size={17}/> US / {entry.ipaUs}</button></div><div className="definition"><span>本机离线词典</span><strong>{entry.translation}</strong><p>{entry.english}</p></div><button className="underline-button" disabled={underlinedWords.includes(entry.lemma.toLowerCase())} onClick={addUnderline}>{underlinedWords.includes(entry.lemma.toLowerCase()) ? '已划线' : '给单词划线'}</button><button className="save-button" disabled={selectedSaved} onClick={saveCard}><Plus size={17}/>{selectedSaved ? 'Saved to vocabulary' : 'Add to vocabulary'}</button></> : <div className="empty-card"><Languages size={28}/><p>点一下英文词即可查词；拖选一句英文后，可以明确点击按钮分析英文句法。</p></div>}</section>{documentPanel}</aside></section></main>
 }
 export default App
