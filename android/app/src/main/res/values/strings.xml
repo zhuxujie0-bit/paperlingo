@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PaperLingo</string>
+    <string name="title_activity_main">PaperLingo</string>
+    <string name="package_name">com.zhuxujie.paperlingo</string>
+    <string name="custom_url_scheme">com.zhuxujie.paperlingo</string>
+</resources>
