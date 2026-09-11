@@ -159,6 +159,7 @@ function App() {
     const safetyError = validateLocalDocument(file)
     if (safetyError) { setNotice(safetyError); return }
     setFileName(file.name); setEntry(null); setSelectedSentence(''); setGrammar(null)
+    setNotice(`已选择 ${file.name}（${(file.size / 1048576).toFixed(1)}MB），正在解析…`)
     if (file.name.toLowerCase().endsWith('.pdf')) { setDocxFile(null); setMode('pdf'); setPdfFile(file); return }
     setPdfFile(null); setMode('docx'); setDocxFile(file); setNotice('正在安全渲染 DOCX…')
   }

@@ -2,6 +2,32 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import ErrorBoundary from './ErrorBoundary.tsx'
+
+// 旧浏览器兼容补丁：PDF 引擎（pdf.js v5）需要 Promise.withResolvers，旧版浏览器没有会直接导致页面崩溃
+if (typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers !== 'function') {
+  ;(Promise as unknown as { withResolvers: <T>() => { promise: Promise<T>; resolve: (v: T) => void; reject: (e?: unknown) => void } }).withResolvers = function <T>() {
+    let resolve!: (v: T) => void
+    let reject!: (e?: unknown) => void
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
+  }
+}
+
+// 非渲染阶段的错误（如文件解析失败）也显示成可见横幅，而不是悄悄白屏
+function showGlobalError(message: string) {
+  let banner = document.getElementById('global-error-banner')
+  if (!banner) {
+    banner = document.createElement('div')
+    banner.id = 'global-error-banner'
+    banner.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#d93766;color:#fff;padding:12px 16px;border-radius:12px;font:14px/1.6 sans-serif;word-break:break-all;'
+    document.body.appendChild(banner)
+  }
+  banner.textContent = `出错啦，把这段话发给开发者：${message}`
+}
+window.addEventListener('unhandledrejection', (event) => {
+  showGlobalError(String(event.reason?.message || event.reason || '未知异步错误'))
+})
 
 // 注册 Service Worker，让网页可"添加到主屏幕"并离线使用（生产环境才注册）
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
@@ -12,6 +38,8 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
