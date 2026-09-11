@@ -167,31 +167,44 @@ function App() {
   const speak = async (lang: 'en-GB' | 'en-US') => {
     const word = entry?.lemma
     if (!word) return
-    // 优先用当前设备（平板/手机/Mac）自带的语音引擎，完全不经过服务器。
-    if ('speechSynthesis' in window) {
+    const label = lang === 'en-GB' ? '英式' : '美式'
+
+    // 兜底发音：设备自带语音失败/无声时，用在线 TTS 音频（免费、无需 Key）
+    const playOnlineTts = (reason: string) => {
+      const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(word)}&tl=en&client=tw-ob`)
+      audio.onerror = () => setNotice(`发音失败：${reason}；在线发音也被拦截。建议在平板装 Chrome 浏览器使用。`)
+      audio.play()
+        .then(() => setNotice(`设备语音不可用（${reason}），已切换在线发音。`))
+        .catch(() => setNotice(`发音失败：${reason}；浏览器拦截了在线发音。建议在平板装 Chrome 浏览器使用。`))
+    }
+
+    // 优先用设备自带语音引擎（平板/手机/Mac 都有）。部分安卓浏览器"假装支持"：
+    // 接口在但不出声，所以加了看门狗——3 秒没动静就自动切在线发音。
+    if ('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
       try {
+        let finished = false
         window.speechSynthesis.cancel()
+        window.speechSynthesis.resume() // 安卓常见 bug：引擎卡在暂停态，先唤醒
         const utterance = new SpeechSynthesisUtterance(word)
         utterance.lang = lang
         utterance.rate = 0.92
-        const voices = window.speechSynthesis.getVoices()
+        const voices = window.speechSynthesis.getVoices() || []
         const voice = voices.find((item) => item.lang === lang) || voices.find((item) => item.lang.startsWith('en'))
         if (voice) utterance.voice = voice
+        utterance.onstart = () => { finished = true; setNotice(`正在播放这台设备自带的 ${label} 发音。`) }
+        utterance.onerror = (event) => { if (!finished) { finished = true; playOnlineTts(`本机语音报错 ${event.error || '未知'}`) } }
         window.speechSynthesis.speak(utterance)
-        setNotice(`正在播放这台设备自带的 ${lang === 'en-GB' ? '英式' : '美式'} 发音；没有经过 Mac。`)
+        window.setTimeout(() => {
+          if (!finished) {
+            finished = true
+            window.speechSynthesis.cancel()
+            playOnlineTts('本机语音无响应')
+          }
+        }, 3000)
         return
-      } catch { /* fall back to the Mac voice below */ }
+      } catch { /* 继续走在线兜底 */ }
     }
-    // 备用：浏览器不支持本地语音时，由 Mac 生成音频。
-    setNotice('正在由 Mac 生成本机语音…')
-    try {
-      const response = await fetch('/api/pronounce', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word, accent: lang === 'en-GB' ? 'uk' : 'us' }) })
-      if (!response.ok) throw new Error('voice')
-      const audio = new Audio(URL.createObjectURL(await response.blob()))
-      audio.onended = () => URL.revokeObjectURL(audio.src)
-      await audio.play()
-      setNotice(`正在播放 Mac ${lang === 'en-GB' ? '英式 Daniel' : '美式 Samantha'} 发音。`)
-    } catch { setNotice('本机发音失败：请确认设备语音或 Mac 服务可用。') }
+    playOnlineTts('浏览器不支持本机语音')
   }
 
   const analyzeGrammar = async () => {
