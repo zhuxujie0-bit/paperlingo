@@ -4,13 +4,32 @@ import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './ErrorBoundary.tsx'
 
-// 旧浏览器兼容补丁：PDF 引擎（pdf.js v5）需要 Promise.withResolvers，旧版浏览器没有会直接导致页面崩溃
+// 旧浏览器兼容补丁：PDF 引擎（pdf.js v5）需要的新 API，旧版浏览器没有会导致页面崩溃
 if (typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers !== 'function') {
   ;(Promise as unknown as { withResolvers: <T>() => { promise: Promise<T>; resolve: (v: T) => void; reject: (e?: unknown) => void } }).withResolvers = function <T>() {
     let resolve!: (v: T) => void
     let reject!: (e?: unknown) => void
     const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
     return { promise, resolve, reject }
+  }
+}
+// URL.parse / URL.canParse（Chrome 126+）：pdf.js 内部解析资源地址要用
+if (typeof (URL as unknown as { parse?: unknown }).parse !== 'function') {
+  ;(URL as unknown as { parse: (url: string, base?: string) => URL | null }).parse = (url: string, base?: string) => {
+    try { return new URL(url, base) } catch { return null }
+  }
+}
+if (typeof (URL as unknown as { canParse?: unknown }).canParse !== 'function') {
+  ;(URL as unknown as { canParse: (url: string, base?: string) => boolean }).canParse = (url: string, base?: string) => {
+    try { new URL(url, base); return true } catch { return false }
+  }
+}
+// AbortSignal.timeout（Chrome 103+）：翻译请求的超时控制要用
+if (typeof AbortSignal.timeout !== 'function') {
+  ;(AbortSignal as unknown as { timeout: (ms: number) => AbortSignal }).timeout = (ms: number) => {
+    const controller = new AbortController()
+    window.setTimeout(() => controller.abort(), ms)
+    return controller.signal
   }
 }
 
