@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ella 的学习小屋 · DASE7140 机器学习笔记</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap');
+
+:root{
+  --ella-red:#df426d; --ella-cream:#fffdf8; --ella-ink:#563646;
+  --pink-border:#f6c5d8; --pink-soft:#fff3f7; --rose:#f14d91;
+  --muted:#a8778b; --gold:#b07d10;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans','PingFang SC','Noto Sans SC',system-ui,sans-serif;
+  color:var(--ella-ink);background-color:var(--ella-cream);
+  background-image:radial-gradient(#f8dbe4 1px,transparent 1px),radial-gradient(circle at 10% 5%,#fff0f4 0,transparent 23rem);
+  background-size:18px 18px,auto;line-height:1.75;
+}
+.shell{max-width:1000px;margin:auto;padding:20px 24px 60px}
+
+/* 顶栏（同 Ella 小屋） */
+.topbar{height:72px;border-bottom:2px solid #f5cfda;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px}
+.bow{width:32px;height:22px;position:relative;display:inline-block;filter:drop-shadow(0 2px 0 #f1c5d0)}
+.bow:before,.bow:after{content:'';position:absolute;top:2px;width:20px;height:17px;background:linear-gradient(145deg,#f87b9d,#d93766);border:2px solid #c73561}
+.bow:before{left:0;border-radius:75% 42% 70% 45%;transform:rotate(18deg)}
+.bow:after{right:0;border-radius:42% 75% 45% 70%;transform:rotate(-18deg)}
+.bow i{position:absolute;z-index:2;left:11px;top:6px;width:11px;height:11px;border-radius:50%;background:#fff4f6;border:2px solid #c73561}
+.wordmark{display:flex;flex-direction:column;gap:2px}
+.wordmark strong{font-family:'Baloo 2','Arial Rounded MT Bold','Hiragino Maru Gothic ProN',sans-serif;font-size:19px;color:#c94368}
+.wordmark small{font-size:9px;letter-spacing:.16em;color:#a86a7d;font-weight:800}
+.home-link{font-size:12.5px;background:#fffaf4;border:1px dashed #e8a7b9;border-radius:999px;padding:7px 12px;color:#a34762;text-decoration:none}
+
+/* Hero */
+.hero{position:relative;margin-top:26px;padding:30px 34px;border:2px solid #f6d5de;background:linear-gradient(125deg,#fffdf9 0%,#fff7fa 100%);border-radius:24px;box-shadow:0 7px 0 #f8e5eb}
+.hero:after{content:'✦';position:absolute;right:28px;top:22px;color:#e95f86;font-size:23px}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;background:#fff0f4;border:1px solid #f7b8c9;border-radius:999px;padding:6px 11px;color:#bd3c63;font-weight:800;font-size:13px}
+.eyebrow:before{content:'♡';font-size:15px}
+.hero h1{font-family:'Baloo 2';font-size:38px;line-height:1.1;margin:10px 0 8px;color:#71374f}
+.hero h1 em{font-style:normal;color:#d83b66;text-decoration:underline;text-decoration-color:#ef8eaa;text-decoration-thickness:3px;text-underline-offset:6px}
+.hero p{max-width:640px;color:#95677a;font-size:14.5px}
+
+/* 目录条 */
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 8px}
+.toc a{font-size:12.5px;background:#ffe5ef;border:1px solid #f9bfd4;border-radius:999px;padding:5px 12px;color:#a94670;text-decoration:none}
+.toc a:hover{background:#ffd7e5}
+
+/* 区块 */
+section{margin-top:44px}
+.sec-title{display:flex;align-items:center;gap:10px;color:#b04a72;font-size:22px;font-family:'Baloo 2';font-weight:700;border-bottom:1px solid #f8d1df;padding-bottom:14px;margin-bottom:18px}
+.sec-title .num{background:#f899bb;color:#fff;border-radius:99px;padding:1px 11px;font-size:14px}
+
+/* 卡片 */
+.card{border:1px solid var(--pink-border);border-radius:24px;background:#fffdfd;padding:22px 26px;margin-bottom:16px}
+.card h3{font-family:'Newsreader';font-size:19px;color:#62384c;margin-bottom:8px}
+.card h4{font-size:14.5px;color:#b04a72;margin:14px 0 6px}
+.card p{font-size:14.5px;margin-bottom:8px;color:#644151}
+.card ul,.card ol{margin:6px 0 10px 22px;font-size:14.5px;color:#644151}
+.card li{margin-bottom:4px}
+.pill{display:inline-block;font-size:11px;padding:1px 9px;border-radius:999px;background:#ffe5ef;color:#d65885;border:1px solid #f2b4cb;margin-right:6px;vertical-align:2px}
+.pill.done{background:#ffe1ed;color:#f14d91;font-weight:700}
+.pill.todo{background:#fff7fa;color:#a8778b}
+.one-liner{margin-top:10px;background:var(--pink-soft);border:1px dashed #eea5be;border-radius:14px;padding:10px 16px;font-size:13.5px;color:#9d5973}
+.one-liner:before{content:'✎ ';color:var(--rose)}
+
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13px;background:#fff}
+th,td{border:1px solid #f7cede;padding:7px 10px;text-align:left;vertical-align:top;color:#644151}
+th{background:#fff3f7;color:#b04a72;font-weight:700}
+
+pre{background:#fff3f7;border:1px solid #f6c5d8;border-radius:14px;padding:14px 18px;overflow-x:auto;margin:8px 0}
+pre code{font-family:Menlo,'SF Mono',monospace;font-size:12.5px;color:#8a3d5a;line-height:1.7}
+code.inl{background:#ffe5ef;color:#c94368;padding:1px 6px;border-radius:6px;font-family:Menlo,monospace;font-size:12.5px}
+
+/* 课程地图 */
+.topic{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border:1px solid var(--pink-border);border-radius:16px;margin-bottom:9px;background:#fffdfd}
+.topic .dot{width:11px;height:11px;border-radius:50%;margin-top:7px;flex-shrink:0}
+.dot.done{background:var(--rose)}
+.dot.todo{background:#f3c4d4}
+.topic b{font-size:14.5px;color:#71374f}
+.topic .desc{color:var(--muted);font-size:13px}
+.legend{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+
+/* 实验台 */
+.lab{border:1px solid var(--pink-border);border-radius:24px;background:#fffdfd;padding:20px 22px;margin:14px 0}
+.lab h4{font-family:'Baloo 2';font-size:16px;color:#b04a72;margin-bottom:6px}
+.lab canvas{display:block;margin:10px auto;background:#fff7fa;border:1px solid #f7cede;border-radius:14px;max-width:100%}
+.lab .controls{display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:13px;color:#9d5973}
+.lab button{border:0;border-radius:12px;background:#dc426d;box-shadow:0 4px 0 #af2e52;color:#fff;padding:8px 16px;font:600 13px inherit;cursor:pointer}
+.lab button:hover{transform:translateY(1px);box-shadow:0 3px 0 #af2e52}
+.lab button.ghost{background:#fff;color:#d65885;border:1px solid #ed95b5;box-shadow:none}
+.lab input[type=range]{width:150px;accent-color:var(--rose)}
+.lab .readout{font-family:Menlo,monospace;font-size:12px;color:var(--gold);min-width:230px}
+.lab .hint{text-align:center;font-size:12.5px;color:var(--muted);margin-top:8px}
+
+footer{margin-top:48px;border-top:1px solid #f8d1df;padding-top:18px;color:var(--muted);font-size:12.5px;text-align:center}
+@media(max-width:680px){.hero h1{font-size:28px}.shell{padding:14px}.card{padding:16px 18px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="bow"><i></i></span>
+    <div class="wordmark"><strong>Ella 的学习小屋</strong><small>ELLA'S STUDY CORNER</small></div>
+  </div>
+  <a class="home-link" href="../">← 回划词学习器</a>
+</header>
+
+<div class="hero">
+  <span class="eyebrow">DASE7140 · 机器学习及应用</span>
+  <h1>机器学习<em>课堂笔记</em></h1>
+  <p>HKU · 数据与系统工程系 · 任课：Dr. S.J. Qin（秦泗钊）· 2026-09-12 第一课：神经网络与反向传播 · 附课程地图 + 梯度补习班 + 拓展资源</p>
+</div>
+
+<nav class="toc">
+  <a href="#notes">📒 今日笔记</a>
+  <a href="#map">🗺️ 课程地图</a>
+  <a href="#math">🧮 数学补给站</a>
+  <a href="#res">📚 拓展资源</a>
+</nav>
+
+<!-- ================= 今日笔记 ================= -->
+<section id="notes">
+<div class="sec-title"><span class="num">01</span>📒 今日笔记 · 2026-09-12</div>
+
+<div class="card">
+  <h3>1 · 一个词怎么变成数字：one-hot → embedding</h3>
+  <p><b>One-hot（稀疏向量）</b>：词表里每个词占一个位置，词表 250 词 → 每个词是 250 维向量，自己位置为 1 其余全 0。缺点：维度 = 词表大小；任意两词之间看不出任何关系。</p>
+  <p><b>Text embedding（稠密向量）</b>：学一个矩阵 W¹（50×250），<b>每一列是一个词的 embedding</b>。W¹ @ x（x 是 one-hot）的效果 = 挑出 W¹ 对应那一列——矩阵乘 one-hot 本质是"查表"。好处：维度小，训练后意思相近的词向量也相近（king − man + woman ≈ queen）。这就是 token embedding，LLM 输入的第一步。</p>
+  <div class="one-liner">one-hot 只是给词编号，embedding 才是词的低维向量表示，靠 one-hot 乘 W 查出来。</div>
+</div>
+
+<div class="card">
+  <h3>2 · softmax 与 sigmoid（一对容易忘的兄弟）</h3>
+  <table>
+    <tr><th></th><th>sigmoid</th><th>softmax</th></tr>
+    <tr><td><b>干什么</b></td><td>压<b>一个</b>数到 0~1</td><td>压<b>一排</b>数到 0~1 且加起来=1</td></tr>
+    <tr><td><b>公式</b></td><td>σ(x) = 1/(1+e⁻ˣ)</td><td>softmax(zᵢ) = e^zᵢ / Σⱼ e^zⱼ</td></tr>
+    <tr><td><b>形状</b></td><td>S 曲线，0 进 0.5 出</td><td>先取指数（放大差距）再归一化</td></tr>
+    <tr><td><b>用在哪</b></td><td>二分类 / 网络中间的"开关"</td><td>多分类 / 最后一层出概率分布</td></tr>
+    <tr><td><b>例子</b></td><td>0.93 → "93% 是垃圾邮件"</td><td>[2,1,0.1] → [0.66, 0.24, 0.10]</td></tr>
+  </table>
+  <p><b>记法</b>：sigmoid 管"一个是非题"，softmax 管"一道多选题"；sigmoid = 两类时的 softmax。sigmoid 缺点：输入很大/很小时曲线平 → 梯度消失，深层内部多用 ReLU。</p>
+  <div class="one-liner">sigmoid 把乱分压成"把握有多大"；softmax 把一排分压成概率分布，LLM 选下一个词就靠它。</div>
+</div>
+
+<div class="card">
+  <h3>3 · 交叉熵、KL 散度、forward KL</h3>
+  <p><b>交叉熵</b>：给模型的概率预测打分的尺子。L = −log(p正确)，只看正确类别。性质：越自信地错罚得越狠（p=0.1 → L=2.3；p=0.01 → L=4.6）。</p>
+  <p><b>CE(p,q) 的两个主角</b>：p = true dist（真实分布 / 标准答案，固定不变）；q = dist to be learned（模型 softmax 输出，训练在调它）。</p>
+  <p><b>分解：CE(p,q) = H(p) + KL(p‖q)</b>。H(p) 是答案自身的熵（常数，改不了）；KL(p‖q) ≥ 0 衡量 q 离 p 多远 → <b>最小化 CE ≡ 最小化 KL</b> ≡ 逼 q 逼近 p。</p>
+  <p><b>Forward vs Reverse</b>：KL 不对称。监督学习用 <b>forward KL(p‖q)</b>——以答案为基准，性格 zero-avoiding"一个都不能漏"，模型摊大饼；reverse KL(q‖p) 以模型为基准，zero-forcing"宁可挑食"，抱死有把握的峰（大模型蒸馏/RLHF 常用）。</p>
+  <div class="one-liner">softmax 负责输出概率，cross entropy 负责评价概率；评价的本质是 forward KL——拿答案当基准看模型贴得多近。</div>
+</div>
+
+<div class="card">
+  <h3>4 · Backprop 反向传播（今天的主菜）</h3>
+  <p><b>干什么</b>：算出"每个参数对 loss 各背多大的锅"（锅 = 梯度 = "该参数调大 1 格，loss 会变几格"）。<b>怎么做</b>：链式法则从输出往回乘——总变化 = 各方向贡献之和，每环局部变化率一路乘回去。</p>
+  <h4>六环链条</h4>
+  <pre><code>∂L/∂y₅ = −答案/预测          ← ① 交叉熵直接求导
+∂L/∂y₄ = 预测 − 答案          ← ② 穿过 softmax（项全部消掉，彩蛋）
+∂L/∂y₃ = Qᵀ · ∂L/∂y₄         ← ③ 穿线性层：乘转置
+∂L/∂y₂ = ∂L/∂y₃ ⊙ σ'(y₂)     ← ④ 穿 sigmoid：乘它的导数 y(1−y)
+∂L/∂y₁ = Pᵀ · ∂L/∂y₂         ← ⑤ 再穿线性层
+∂L/∂W  = 责任 × 当时的输入     ← ⑥ 落到参数上，用了几次加几次</code></pre>
+  <h4>全表只有三条规律</h4>
+  <ol>
+    <li><b>穿矩阵层乘转置</b>：正向乘 Q，反向乘 Qᵀ</li>
+    <li><b>权重梯度 = 责任 × 当时的输入</b>：∂y/∂w = x，输入是旋钮放大倍数；共享权重用了几次加几次</li>
+    <li><b>穿激活函数乘其导数</b>：sigmoid 的导数 = y(1−y)</li>
+  </ol>
+  <h4>数字版一遍走通</h4>
+  <ul>
+    <li>答案 "to"，模型给 0.3 → 输出的锅 = 预测−答案 = 0.3−1 = <b>−0.6</b>（负号 = 该输出该变大）</li>
+    <li>一路乘回去，参数 w 的锅 = <b>−2</b>（意思：w 调大 1 格，loss 降 2 格）</li>
+    <li>更新：w新 = w旧 − η×锅 = w旧 − 0.1×(−2) = <b>w旧 + 0.2</b> → 下次 "to" 的概率涨一点</li>
+    <li>减号的原因：梯度指 loss 上升最快方向，减号 = 反着走 = 往下降方向挪</li>
+  </ul>
+  <div class="one-liner">前向算"预测得多烂"，backprop 算"每个参数背多少锅"，梯度下降按锅调参——训练就是这三步循环。</div>
+</div>
+
+<div class="card">
+  <h3>5 · 训练完整流程（Training procedure）</h3>
+  <p>每个 <b>mini-batch</b>（一小批数据如 32 条）走一遍：</p>
+  <pre><code>读输入+答案 → 正向传播 → 交叉熵算 loss → 该停了吗？
+→ 反向传播算梯度 → 梯度下降更新参数 → 用验证集测 loss 查过拟合</code></pre>
+  <ul>
+    <li><b>Epoch</b> = 整个数据集完整过一遍；训练 = 几十上百个 epoch，每个 epoch 遍历所有 mini-batch（两层循环）</li>
+    <li><b>过拟合</b>：练太久把训练题背下来（连噪音一起背），换新题反而变烂</li>
+    <li><b>Early stop</b>：训练集 loss 还在降、验证集 loss 开始升 → 停，保留泛化最好的权重</li>
+  </ul>
+  <div class="one-liner">数据分批喂、循环跑很多轮；旁边放个验证集盯着，一发现开始死记硬背就喊停。</div>
+</div>
+
+<div class="card">
+  <h3>6 · 小网络 → 大模型（From simple to complex）</h3>
+  <table>
+    <tr><th></th><th>课上 mininet</th><th>DeepSeek LLM (2024.1)</th></tr>
+    <tr><td>参数</td><td>93K</td><td>67B（670 亿）</td></tr>
+    <tr><td>分词</td><td>整词 word-level</td><td>BPE（拆成常见片段如 play+ing，解决生僻词）</td></tr>
+    <tr><td>上下文</td><td>3 个词</td><td>4096 token</td></tr>
+    <tr><td>训练数据</td><td>一句话</td><td>2T token → 超 GPT-3.5</td></tr>
+  </table>
+  <p><b>LLM 两阶段训练</b>：<b>Pre-training 预训练 → Base model</b>（海量文本玩"预测下一个词"，会续写但不听指令）→ <b>SFT 监督微调</b>（2 epochs，人工指令示范，学会听指令）→ <b>DPO</b>（1 epoch，偏好数据，回答更讨人喜欢 → final LM）。</p>
+  <div class="one-liner">LLM = 预训练学语言 → SFT 学听指令 → DPO 学讨人喜欢。原理和课堂小网络一模一样，只是规模放大。</div>
+</div>
+</section>
+
+<!-- ================= 课程地图 ================= -->
+<section id="map">
+<div class="sec-title"><span class="num">02</span>🗺️ 课程地图 · DASE7140 官方大纲</div>
+<p class="legend">来源：HKU DASE 系官方 syllabus · <span class="pill done">今天上了</span><span class="pill todo">后面要学</span></p>
+
+<div class="topic"><span class="dot done"></span><div><b>神经网络 Neural networks</b> <span class="pill done">今天上了</span><div class="desc">embedding → 前向传播 → softmax → 交叉熵 → backprop → 梯度下降。大纲里最难的一章，核心已啃完</div></div></div>
+<div class="topic"><span class="dot done"></span><div><b>模型训练、测试、选择与验证</b> <span class="pill done">今天上了</span><div class="desc">mini-batch、epoch、验证集、early stop、过拟合。后面还会正式讲模型选择</div></div></div>
+<div class="topic"><span class="dot done"></span><div><b>监督学习 Supervised learning</b> <span class="pill done">今天上了</span><div class="desc">今天全部内容都属于监督学习（有标准答案）</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>线性回归 Linear regression</b> <span class="pill todo">待学</span><div class="desc">答案变成连续数（房价、销量）而不是类别。数学上和今天一脉相承：损失 → 梯度 → 调参</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>分类与回归 Classification &amp; regression</b> <span class="pill todo">待学</span><div class="desc">两大类任务的正式定义与评价指标（准确率、召回率、MSE…）</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>决策树 Decision trees</b> <span class="pill todo">待学</span><div class="desc">像"20 个问题"游戏：一串 yes/no 判断走到结论。不依赖梯度，可解释性强</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>支持向量机 SVM</b> <span class="pill todo">待学</span><div class="desc">找"离两边都最远"的分界线。数学较重（间隔最大化、核技巧）</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>k 近邻 k-NN</b> <span class="pill todo">待学</span><div class="desc">最简单的算法：看最近的 k 个邻居是什么就跟着是什么。不用训练</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>无监督学习 Unsupervised learning</b> <span class="pill todo">待学</span><div class="desc">没有标准答案：聚类、降维。今天的 embedding 已经沾边</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>强化学习 Reinforcement learning</b> <span class="pill todo">待学</span><div class="desc">没有标准答案，只有奖励/惩罚信号：下棋、机器人，试错中学</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>主动学习 Active learning</b> <span class="pill todo">待学</span><div class="desc">模型自己挑"最值得标注的样本"让人类标——省标注成本，和图纸审查场景强相关</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>性能评估 Performance evaluation</b> <span class="pill todo">待学</span><div class="desc">准确率/精确率/召回率/F1、ROC。门槛调召回还是调误报，在这里理论化</div></div></div>
+<div class="topic"><span class="dot todo"></span><div><b>工业应用 Industrial applications</b> <span class="pill todo">待学</span><div class="desc">预测、排序、推荐、信息抽取、目标识别、模式识别——课程后半段的落地部分</div></div></div>
+</section>
+
+<!-- ================= 数学补给站 ================= -->
+<section id="math">
+<div class="sec-title"><span class="num">03</span>🧮 数学补给站 · 梯度补习班</div>
+
+<div class="card">
+  <h3>导数 → 偏导 → 梯度，三段补齐</h3>
+  <p><b>导数</b>：f(x) = x²，f'(x) = 2x。意思：<b>x 挪一点点，f 变多少</b>。x=3 时 f'=6：x 挪 0.01，f 大约变 0.06。就这一个概念。</p>
+  <p><b>偏导</b>：f(x,y) = x² + y²，∂f/∂x = 2x（把 y 当常数，一次只拧一个旋钮）。∂ 读作 "partial"。</p>
+  <p><b>梯度</b>：所有偏导排成一队 ∇f = [2x, 2y]ᵀ，指向<b>上山最快的方向</b>。要下山（减小 loss）就反着走：<b>新参数 = 旧参数 − 学习率 × 梯度</b>。</p>
+  <p style="color:var(--muted);font-size:13px">梯度管"上坡"；散度管"冒水"、旋度管"打转"——后俩是物理系的事，这门课用不上。</p>
+</div>
+
+<div class="lab">
+  <h4>🎮 玩一玩：梯度下降（拖小球 / 点"走一步"，看参数怎么滚到谷底）</h4>
+  <canvas id="gd" width="640" height="300"></canvas>
+  <div class="controls">
+    <label>学习率 η <input type="range" id="lr" min="0.02" max="1.05" step="0.01" value="0.3"></label>
+    <button id="step">走一步</button>
+    <button id="auto" class="ghost">自动走</button>
+    <button id="reset" class="ghost">复位</button>
+    <span class="readout" id="gdOut"></span>
+  </div>
+  <p class="hint">f(x) = x²。η 太小走得慢；η 拉到 1 以上会来回蹦甚至飞出去——这就是"学习率不能乱设"。可拖动小球换出发点。</p>
+</div>
+
+<div class="lab">
+  <h4>🎮 玩一玩：sigmoid（拖滑块看原始分怎么被压进 0~1）</h4>
+  <canvas id="sig" width="640" height="300"></canvas>
+  <div class="controls">
+    <label>原始分 x <input type="range" id="sigx" min="-10" max="10" step="0.1" value="0"></label>
+    <span class="readout" id="sigOut"></span>
+  </div>
+  <p class="hint">拖到 ±8 以外：曲线几乎平了（坡度≈0）→ 梯度消失 → backprop 传回来的锅≈0 → 参数学不动。</p>
+</div>
+</section>
+
+<!-- ================= 拓展资源 ================= -->
+<section id="res">
+<div class="sec-title"><span class="num">04</span>📚 拓展资源（按这门课挑的）</div>
+
+<div class="card">
+  <h3>补梯度 / 反向传播（最优先）</h3>
+  <ul>
+    <li><b>3Blue1Brown《深度学习》系列</b>（YouTube / B站，4 集）——第 3、4 集把 backprop 讲成动画，和今天课件完全对应</li>
+    <li><b>3Blue1Brown《微积分的本质》</b>——第 1~3 集补导数直觉，专治"梯度不会"</li>
+    <li><b>Michael Nielsen《Neural Networks and Deep Learning》第 1~2 章</b>（免费在线，有中译）——backprop 完整推导，难度和课上六环推导一致</li>
+  </ul>
+</div>
+<div class="card">
+  <h3>配套整门课的开源资源（GitHub）</h3>
+  <ul>
+    <li><b>d2l-ai/d2l-zh</b>《动手学深度学习》——李沐，中文，代码能跑，覆盖神经网络/训练/评估主线</li>
+    <li><b>microsoft/ML-For-Beginners</b>——微软官方入门课，覆盖线性回归、决策树、SVM、k-NN、聚类，正好补大纲前半</li>
+    <li><b>afshinea/stanford-cs-229-machine-learning</b>——斯坦福 CS229 速查表（中英双语 PDF），考前背公式用</li>
+    <li><b>bentrevett/machine-learning-courses</b>——各家 ML 课程汇总，按主题找课件</li>
+  </ul>
+</div>
+<div class="card">
+  <h3>进阶（课程后半段会沾到）</h3>
+  <ul>
+    <li><b>fast.ai</b>——自顶向下学深度学习，工程导向</li>
+    <li><b>Andrej Karpathy: Neural Networks Zero to Hero</b>——手搓 micrograd，彻底理解 backprop 的代码实现</li>
+  </ul>
+</div>
+</section>
+
+<footer>Ella 的学习小屋 · DASE7140 机器学习笔记 · 2026-09-12 · 大纲来源：HKU DASE 官方 syllabus</footer>
+</div>
+
+<script>
+/* ===== 梯度下降小实验 ===== */
+(function(){
+  const cv = document.getElementById('gd'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, pad = 40;
+  const x2px = x => pad + (x + 5.2) / 10.4 * (W - 2*pad);
+  const y2px = y => H - pad - (y / 27) * (H - 2*pad);
+  const px2x = px => (px - pad) / (W - 2*pad) * 10.4 - 5.2;
+  let x = 4.2, trail = [], timer = null;
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.beginPath();
+    for(let px=pad; px<=W-pad; px++){
+      const t = px2x(px), y = t*t;
+      px===pad ? ctx.moveTo(px, y2px(y)) : ctx.lineTo(px, y2px(y));
+    }
+    ctx.strokeStyle = '#df426d'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = '#2c7a3f';
+    ctx.beginPath(); ctx.arc(x2px(0), y2px(0), 4, 0, 7); ctx.fill();
+    ctx.font = '12px DM Sans,sans-serif'; ctx.fillText('谷底（loss 最小）', x2px(0)+8, y2px(0)-6);
+    ctx.fillStyle = 'rgba(176,125,16,.35)';
+    trail.forEach(t => { ctx.beginPath(); ctx.arc(x2px(t), y2px(t*t), 3, 0, 7); ctx.fill(); });
+    const g = 2*x;
+    ctx.beginPath();
+    const t1 = x - 1, t2 = x + 1;
+    ctx.moveTo(x2px(t1), y2px(g*(t1-x)+x*x));
+    ctx.lineTo(x2px(t2), y2px(g*(t2-x)+x*x));
+    ctx.strokeStyle = '#b07d10'; ctx.lineWidth = 1.5; ctx.setLineDash([5,4]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#563646';
+    ctx.beginPath(); ctx.arc(x2px(x), y2px(x*x), 8, 0, 7); ctx.fill();
+    document.getElementById('gdOut').textContent =
+      `x = ${x.toFixed(3)}   f(x) = ${(x*x).toFixed(3)}   梯度 = ${(2*x).toFixed(3)}`;
+  }
+  function step(){
+    const lr = parseFloat(document.getElementById('lr').value);
+    trail.push(x); if(trail.length > 40) trail.shift();
+    x = x - lr * 2 * x;
+    if (Math.abs(x) > 5.1) { stopAuto(); x = Math.sign(x)*5.1; }
+    draw();
+  }
+  function stopAuto(){ if(timer){ clearInterval(timer); timer=null; document.getElementById('auto').textContent='自动走'; } }
+  document.getElementById('step').onclick = () => { stopAuto(); step(); };
+  document.getElementById('auto').onclick = function(){
+    if(timer){ stopAuto(); } else { this.textContent='停下'; timer = setInterval(step, 350); }
+  };
+  document.getElementById('reset').onclick = () => { stopAuto(); x = 4.2; trail = []; draw(); };
+  document.getElementById('lr').oninput = draw;
+  let drag = false;
+  cv.addEventListener('mousedown', () => drag = true);
+  window.addEventListener('mouseup', () => drag = false);
+  cv.addEventListener('mousemove', e => {
+    if(!drag) return;
+    stopAuto();
+    const r = cv.getBoundingClientRect();
+    x = Math.max(-5, Math.min(5, px2x(e.clientX - r.left)));
+    trail = []; draw();
+  });
+  draw();
+})();
+
+/* ===== sigmoid 小实验 ===== */
+(function(){
+  const cv = document.getElementById('sig'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, pad = 40;
+  const s = x => 1 / (1 + Math.exp(-x));
+  const x2px = x => pad + (x + 11) / 22 * (W - 2*pad);
+  const y2px = y => H - pad - y * (H - 2*pad);
+  function draw(){
+    const x = parseFloat(document.getElementById('sigx').value);
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle = '#f3d3de';
+    [0, 0.5, 1].forEach(y => {
+      ctx.beginPath(); ctx.moveTo(pad, y2px(y)); ctx.lineTo(W-pad, y2px(y)); ctx.stroke();
+    });
+    ctx.beginPath();
+    for(let px=pad; px<=W-pad; px++){
+      const t = -11 + (px-pad)/(W-2*pad)*22;
+      px===pad ? ctx.moveTo(px, y2px(s(t))) : ctx.lineTo(px, y2px(s(t)));
+    }
+    ctx.strokeStyle = '#df426d'; ctx.lineWidth = 2.5; ctx.stroke();
+    const y = s(x), d = y*(1-y);
+    ctx.beginPath();
+    const t1 = x-2, t2 = x+2;
+    ctx.moveTo(x2px(t1), y2px(Math.max(-0.05, Math.min(1.05, y + d*(t1-x)))));
+    ctx.lineTo(x2px(t2), y2px(Math.max(-0.05, Math.min(1.05, y + d*(t2-x)))));
+    ctx.strokeStyle = '#b07d10'; ctx.lineWidth = 1.5; ctx.setLineDash([5,4]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#563646';
+    ctx.beginPath(); ctx.arc(x2px(x), y2px(y), 8, 0, 7); ctx.fill();
+    document.getElementById('sigOut').textContent =
+      `σ(${x.toFixed(1)}) = ${y.toFixed(4)}   坡度 σ'(x) = ${d.toFixed(4)} ${d < 0.01 ? '← 太平了，学不动！' : ''}`;
+  }
+  document.getElementById('sigx').oninput = draw;
+  draw();
+})();
+</script>
+</body>
+</html>
