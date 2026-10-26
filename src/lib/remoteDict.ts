@@ -11,6 +11,8 @@ export type RemoteDictEntry = {
 
 type ChunkPayload = Record<string, [string, string, string, string]>
 
+// 库名沿用改名前的旧前缀：改名会让老用户已缓存的词典分块（最多 60MB）全部失效、需要重下。
+// 这个名字只存在于本机、对用户不可见，所以用"名字不好看"换取向后兼容。
 const DB_NAME = 'ella-dict-cache'
 const DB_STORE = 'chunks'
 const DB_VERSION = 1

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { renderAsync } from 'docx-preview'
-import { BookOpen, FileUp, Languages, LoaderCircle, Plus, Sparkles, Volume2 } from 'lucide-react'
+import { BookOpen, Download, FileUp, Languages, LoaderCircle, Plus, Sparkles, Volume2 } from 'lucide-react'
 import { lookupWord, normalizeLookupWord, type DictionaryEntry } from './lib/dictionary'
 import { lookupRemoteWord } from './lib/remoteDict'
 import { analyzeSentenceLocally } from './lib/localGrammar'
 import { readVocabulary, saveVocabulary, type VocabularyCard } from './lib/vocabulary'
+import { downloadTextFile, exportFileName, toAnkiTsv, toCsv } from './lib/vocabularyExport'
+import { progressKey, readProgress, saveProgress } from './lib/readingProgress'
+import { resolveShortcut } from './lib/shortcuts'
 import { validateLocalDocument } from './lib/fileSafety'
 import { sanitizeDocxLinks } from './lib/docxSafety'
 import { joinPdfTextItems } from './lib/pdfText'
@@ -63,7 +66,14 @@ function App() {
         const items = content.items.filter((item): item is typeof item & { str: string; transform: number[]; width: number } => 'str' in item)
         texts.push(joinPdfTextItems(items.map((item) => ({ str: item.str, x: item.transform[4], y: item.transform[5], width: item.width }))).replace(/\s+/g, ' ').trim())
       }
-      if (!cancelled) { setPdfPageTexts(texts); setPdfStudyText(texts[0] || ''); setNotice(`PDF 已加载 ${document.numPages} 页。没有自动高亮，句法分析也只在你点击后进行。`) }
+      if (!cancelled) {
+        // 阅读进度记忆：同一份 PDF 再打开时直接回到上次停下的那一页。
+        const resumed = readProgress(progressKey(pdfFile.name, pdfFile.size), texts.length)
+        setPdfPageTexts(texts); setCurrentPage(resumed); setPdfStudyText(texts[resumed - 1] || '')
+        setNotice(resumed > 1
+          ? `PDF 已加载 ${document.numPages} 页，已回到上次读到的第 ${resumed} 页。`
+          : `PDF 已加载 ${document.numPages} 页。没有自动高亮，句法分析也只在你点击后进行。`)
+      }
     }).catch(() => !cancelled && setNotice('PDF 文本层不可读取：可查看原稿，但无法划词学习。'))
     return () => { cancelled = true }
   }, [pdfFile])
@@ -157,6 +167,16 @@ function App() {
     return () => { observer.disconnect(); window.removeEventListener('resize', update) }
   }, [])
 
+  // 翻页统一入口：按钮和键盘快捷键都走这里，顺带把阅读进度写进 localStorage。
+  const goToPage = (next: number) => {
+    if (mode !== 'pdf' || !pdfFile || next < 1 || (pages > 0 && next > pages)) return
+    setCurrentPage(next)
+    setPdfStudyText(pdfPageTexts[next - 1] || '')
+    saveProgress(progressKey(pdfFile.name, pdfFile.size), next)
+  }
+
+  // 存储键沿用旧前缀 'ella-manual-underlines'：改名会让已有用户的划线全部读不出来，
+  // 而这个键只在本机、对用户不可见，所以保留旧名换取向后兼容。
   const underlineStorageKey = pdfFile ? `ella-manual-underlines:v1:${fileName}:${pdfFile.size}` : ''
   useEffect(() => {
     if (!underlineStorageKey) { setUnderlinedWords([]); return }
@@ -236,8 +256,41 @@ function App() {
 
   const selectedSaved = useMemo(() => entry ? cards.some((card) => card.lemma === entry.lemma && card.sentence === sentence) : false, [cards, entry, sentence])
   const saveCard = () => { if (entry) { setCards(saveVocabulary(entry, sentence)); setNotice(`已把 ${entry.lemma} 保存到本机生词本。`) } }
-  const documentPanel = <section className="library-panel"><div className="side-title"><BookOpen size={18}/> 我的文档</div><div className="document active"><span className="doc-icon">{mode === 'docx' ? 'DOCX' : 'PDF'}</span><span><b>{fileName}</b><small>{mode === 'sample' ? '上传文档后即可原文划词' : '仅在本机读取，不上传云端'}</small></span></div><div className="side-title vocab-title"><Languages size={18}/> 生词本 <span>{cards.length}</span></div>{cards.length ? <ul className="vocab-list">{cards.slice(0, 5).map((card) => <li key={card.id}><b>{card.lemma}</b><small>{card.translation}</small></li>)}</ul> : <p className="empty">加入的单词会保存在这台浏览器里。</p>}</section>
 
-  return <main className="app-shell"><header className="topbar"><div className="ella-brand"><span className="ella-bow" aria-hidden="true"><i/></span><span className="ella-wordmark"><strong>Ella 的学习小屋</strong><small>READ · MARK · GROW</small></span></div><div className="status-dot">离线词典已启用</div></header><section className="hero"><div><p className="eyebrow">英文论文沉浸式阅读</p><h1>读论文时，<em>划词就懂。</em></h1><p>查词、发音、句法分析全部在这台设备上完成，不联网也不花钱。</p></div><label className="upload"><FileUp size={18}/><span>上传 PDF / DOCX</span><input aria-label="上传 PDF 或 DOCX" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])}/></label></section><div className="notice" role="status">{notice}</div><section className="workspace"><section className="reader"><div className="reader-top"><span>阅读区</span><small>点词即查 · 拖选句子可分析句法 · 单词划线由你手动决定</small></div><article ref={readerRef} className="paper" onMouseUp={inspectSelection} onClick={lookupTappedWord}>{mode === 'sample' && <><p className="paper-meta">DEMO PAPER · PAGE 1</p><h2>Context-aware vocabulary learning in academic reading</h2><p>{sampleSentence}</p></>}{mode === 'pdf' && pdfFile && <Document file={pdfFile} options={pdfRenderOptions} loading={<p><LoaderCircle className="spin"/> 正在解析 PDF…</p>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setNotice('PDF 解析失败：请确认文件有可选中的文字层。')}><Page key={`${currentPage}-${underlinedWords.join('-')}`} pageNumber={currentPage} width={pageWidth} renderAnnotationLayer renderTextLayer customTextRenderer={renderPdfText}/><p className="page-count">已加载 {pages} 页，当前第 {currentPage} 页。<button disabled={currentPage <= 1} onClick={() => { const next = currentPage - 1; setCurrentPage(next); setPdfStudyText(pdfPageTexts[next - 1] || '') }}>上一页</button><button disabled={currentPage >= pages} onClick={() => { const next = currentPage + 1; setCurrentPage(next); setPdfStudyText(pdfPageTexts[next - 1] || '') }}>下一页</button></p></Document>}{mode === 'docx' && <div ref={docxRef} className="docx-content"/>}</article></section><aside className="utility-rail"><section className="lookup"><div className="lookup-title">查词卡</div>{selectedSentence ? <div className="sentence-card"><span>已选英文句子</span><p>{selectedSentence}</p>{grammar ? <div className="ai-box"><b>整句意思</b><p>{grammar.translation}</p><b>句法结构</b><p>{grammar.structure}</p><b>主句</b><p>{grammar.main_clause}</p><b>从句 / 修饰成分</b><ul>{grammar.clauses.map((item, index) => <li key={`${item.text}-${index}`}><strong>{item.type}</strong> — {item.text} ({item.role})</li>)}</ul><b>中文解释</b><p>{grammar.explanation}</p></div> : <button className="ai-button" disabled={isAnalysingGrammar} onClick={analyzeGrammar}><Sparkles size={16}/>{isAnalysingGrammar ? '本机正在分析…' : '分析句法（本机免费）'}</button>}</div> : entry ? <><div className="word-head"><h2>{selectedWord}</h2><span>{entry.partOfSpeech}</span></div><p className="lemma">Lemma: {entry.lemma}</p><div className="pronunciation"><button onClick={() => speak('en-GB')}><Volume2 size={17}/> UK / {entry.ipaUk}</button><button onClick={() => speak('en-US')}><Volume2 size={17}/> US / {entry.ipaUs}</button></div><div className="definition"><span>本机离线词典</span><strong>{entry.translation}</strong><p>{entry.english}</p></div><button className="underline-button" disabled={underlinedWords.includes(entry.lemma.toLowerCase())} onClick={addUnderline}>{underlinedWords.includes(entry.lemma.toLowerCase()) ? '已划线' : '给单词划线'}</button><button className="save-button" disabled={selectedSaved} onClick={saveCard}><Plus size={17}/>{selectedSaved ? 'Saved to vocabulary' : 'Add to vocabulary'}</button></> : <div className="empty-card"><Languages size={28}/><p>点一下英文词即可查词；拖选一句英文后，可以明确点击按钮分析英文句法。</p></div>}</section>{documentPanel}</aside></section></main>
+  // 生词本导出：CSV 给 Excel / Numbers，TSV 给 Anki。文件在浏览器里生成，不经过任何服务器。
+  const exportVocabulary = (kind: 'csv' | 'anki') => {
+    if (!cards.length) { setNotice('生词本还是空的，先存几个单词再导出。'); return }
+    const outName = exportFileName(kind)
+    if (kind === 'csv') downloadTextFile(outName, 'text/csv', toCsv(cards))
+    else downloadTextFile(outName, 'text/tab-separated-values', toAnkiTsv(cards))
+    setNotice(`已导出 ${cards.length} 个生词到 ${outName}（${kind === 'csv' ? 'Excel / Numbers 可直接打开' : 'Anki 里选「导入文件」即可'}）。`)
+  }
+
+  // 快捷键：← → 翻页，K / P 英式 / 美式发音，U 划线，S 存生词本，E 导出 CSV。
+  // 不写依赖数组：每次渲染重新挂载监听，回调永远拿到最新的 currentPage / entry，避免闭包读到旧值。
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const action = resolveShortcut(event)
+      if (!action) return
+      if (action === 'prevPage' || action === 'nextPage') {
+        if (mode !== 'pdf') return // 非 PDF 模式让方向键照常滚动页面
+        event.preventDefault()
+        goToPage(currentPage + (action === 'nextPage' ? 1 : -1))
+        return
+      }
+      event.preventDefault()
+      if (action === 'speakUk') void speak('en-GB')
+      if (action === 'speakUs') void speak('en-US')
+      if (action === 'underline') addUnderline()
+      if (action === 'save') saveCard()
+      if (action === 'exportCsv') exportVocabulary('csv')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  })
+
+  const documentPanel = <section className="library-panel"><div className="side-title"><BookOpen size={18}/> 我的文档</div><div className="document active"><span className="doc-icon">{mode === 'docx' ? 'DOCX' : 'PDF'}</span><span><b>{fileName}</b><small>{mode === 'sample' ? '上传文档后即可原文划词' : '仅在本机读取，不上传云端'}</small></span></div><div className="side-title vocab-title"><Languages size={18}/> 生词本 <span>{cards.length}</span></div>{cards.length ? <ul className="vocab-list">{cards.slice(0, 5).map((card) => <li key={card.id}><b>{card.lemma}</b><small>{card.translation}</small></li>)}</ul> : <p className="empty">加入的单词会保存在这台浏览器里。</p>}<div className="export-row"><button disabled={!cards.length} onClick={() => exportVocabulary('csv')}><Download size={15}/> 导出 CSV</button><button disabled={!cards.length} onClick={() => exportVocabulary('anki')}><Download size={15}/> 导出 Anki</button></div></section>
+
+  return <main className="app-shell"><header className="topbar"><div className="brand"><span className="brand-mark" aria-hidden="true">PL</span><span className="brand-wordmark"><strong>PaperLingo</strong><small>READ · LOOK UP · REVIEW</small></span></div><div className="status-dot">离线词典已启用</div></header><section className="hero"><div><p className="eyebrow">英文论文与课程材料阅读</p><h1>读英文材料时，<em>划词就懂。</em></h1><p>查词、发音、句法拆解全部在这台设备上完成；生词本可导出成 CSV 或 Anki 卡片。不联网也能用，不需要任何 API Key。</p></div><label className="upload"><FileUp size={18}/><span>上传 PDF / DOCX</span><input aria-label="上传 PDF 或 DOCX" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])}/></label></section><div className="notice" role="status">{notice}</div><section className="workspace"><section className="reader"><div className="reader-top"><span>阅读区</span><small>点词即查 · 拖选句子可分析句法 · 快捷键：← → 翻页，K/P 发音，U 划线，S 存词，E 导出</small></div><article ref={readerRef} className="paper" onMouseUp={inspectSelection} onClick={lookupTappedWord}>{mode === 'sample' && <><p className="paper-meta">DEMO PAPER · PAGE 1</p><h2>Context-aware vocabulary learning in academic reading</h2><p>{sampleSentence}</p></>}{mode === 'pdf' && pdfFile && <Document file={pdfFile} options={pdfRenderOptions} loading={<p><LoaderCircle className="spin"/> 正在解析 PDF…</p>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setNotice('PDF 解析失败：请确认文件有可选中的文字层。')}><Page key={`${currentPage}-${underlinedWords.join('-')}`} pageNumber={currentPage} width={pageWidth} renderAnnotationLayer renderTextLayer customTextRenderer={renderPdfText}/><p className="page-count">已加载 {pages} 页，当前第 {currentPage} 页（进度会自动记住）。<button disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>上一页</button><button disabled={currentPage >= pages} onClick={() => goToPage(currentPage + 1)}>下一页</button></p></Document>}{mode === 'docx' && <div ref={docxRef} className="docx-content"/>}</article></section><aside className="utility-rail"><section className="lookup"><div className="lookup-title">查词卡</div>{selectedSentence ? <div className="sentence-card"><span>已选英文句子</span><p>{selectedSentence}</p>{grammar ? <div className="ai-box"><b>整句意思</b><p>{grammar.translation}</p><b>句法结构</b><p>{grammar.structure}</p><b>主句</b><p>{grammar.main_clause}</p><b>从句 / 修饰成分</b><ul>{grammar.clauses.map((item, index) => <li key={`${item.text}-${index}`}><strong>{item.type}</strong> — {item.text} ({item.role})</li>)}</ul><b>中文解释</b><p>{grammar.explanation}</p></div> : <button className="ai-button" disabled={isAnalysingGrammar} onClick={analyzeGrammar}><Sparkles size={16}/>{isAnalysingGrammar ? '本机正在分析…' : '分析句法（本机免费）'}</button>}</div> : entry ? <><div className="word-head"><h2>{selectedWord}</h2><span>{entry.partOfSpeech}</span></div><p className="lemma">Lemma: {entry.lemma}</p><div className="pronunciation"><button onClick={() => speak('en-GB')}><Volume2 size={17}/> UK / {entry.ipaUk}</button><button onClick={() => speak('en-US')}><Volume2 size={17}/> US / {entry.ipaUs}</button></div><div className="definition"><span>本机离线词典</span><strong>{entry.translation}</strong><p>{entry.english}</p></div><button className="underline-button" disabled={underlinedWords.includes(entry.lemma.toLowerCase())} onClick={addUnderline}>{underlinedWords.includes(entry.lemma.toLowerCase()) ? '已划线' : '给单词划线'}</button><button className="save-button" disabled={selectedSaved} onClick={saveCard}><Plus size={17}/>{selectedSaved ? '已存入生词本' : '存入生词本'}</button></> : <div className="empty-card"><Languages size={28}/><p>点一下英文词即可查词；拖选一句英文后，可以明确点击按钮分析英文句法。</p></div>}</section>{documentPanel}</aside></section></main>
 }
 export default App

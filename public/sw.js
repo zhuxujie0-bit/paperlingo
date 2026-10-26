@@ -1,8 +1,8 @@
-// Ella 学习小屋 Service Worker：让网页离线可开、词典分块离线可查。
+// PaperLingo Service Worker：让网页离线可开、词典分块离线可查。
 // 策略：
 // - 页面导航（HTML）走"网络优先，离线回退缓存"——保证新版本能及时生效；
 // - 静态资源与词典分块走"缓存优先，网络回写"——查过一次即永久离线可用。
-const CACHE_NAME = 'ella-paperlingo-v2'
+const CACHE_NAME = 'paperlingo-v3'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
