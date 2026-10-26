@@ -1,7 +1,29 @@
 {
-  "name": "paperlingo-local",
+  "name": "paperlingo",
+  "version": "1.0.0",
+  "description": "英文论文划词学习器：PDF/DOCX 阅读、离线查词、句法分析与朗读，全部在本机完成，无需 API Key。",
+  "keywords": [
+    "react",
+    "typescript",
+    "vite",
+    "pwa",
+    "indexeddb",
+    "offline-first",
+    "pdf-viewer",
+    "english-learning",
+    "ecdict"
+  ],
+  "homepage": "https://zhuxujie0-bit.github.io/paperlingo/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhuxujie0-bit/paperlingo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhuxujie0-bit/paperlingo/issues"
+  },
+  "license": "MIT",
+  "author": "Zhu Xujie",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n web,api -c cyan,green \"vite\" \"node server.mjs\"",
@@ -10,11 +32,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "android:sync": "npm run build && npx cap sync android"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.1",
-    "@capacitor/core": "^8.5.1",
     "@floating-ui/react": "^0.27.20",
     "compromise": "^14.17.0",
     "concurrently": "^10.0.5",
@@ -28,7 +48,6 @@
     "react-pdf": "^10.5.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.5.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^24.13.3",

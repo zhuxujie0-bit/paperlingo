@@ -28,9 +28,13 @@ https://zhuxujie0-bit.github.io/paperlingo/
 
 ## 本地开发（Mac）
 
-1. 双击 `启动 PaperLingo.command`
-2. 浏览器打开 http://127.0.0.1:5173
-3. 同一 Wi-Fi 下，平板可直接访问 `http://<Mac的IP>:5173`
+```bash
+npm install
+npm run dev
+```
+
+1. 浏览器打开 http://127.0.0.1:5173
+2. 同一 Wi-Fi 下，平板可直接访问 `http://<Mac的IP>:5173`
 
 ## 架构说明
 
@@ -40,12 +44,14 @@ https://zhuxujie0-bit.github.io/paperlingo/
 - 句法分析：compromise.js 本机拆解 + MyMemory 免费翻译兜底；**不接 Kimi / 不接任何付费 API**
 - PWA：`public/manifest.webmanifest` + `public/sw.js`（缓存优先策略）
 - 图标：`scripts/generate_pwa_icons.py` 生成的原创蝴蝶结图标（无 Sanrio 素材）
+- 可选后端：`server.mjs` 是一个**本机开发用的可选代理**（`npm run dev:api`），用于试验服务端转发与提示词注入防护；线上 GitHub Pages 版本不使用它，核心功能不依赖任何 API Key
 
 ## 验证命令
 
 ```bash
 npm run build
-npx vitest run src/lib/dictionary.test.ts
+npm run lint
+npm test
 ```
 
 ## 当前边界
